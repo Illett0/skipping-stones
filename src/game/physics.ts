@@ -7,6 +7,8 @@ import type { BounceEvent, EndReason, StageDef, ThrowInput, ThrowResult, Traject
 export const MAX_GAUGE_PER_ROUND = 1000;
 export const GAUGE_ROUNDS = 3;
 export const MAX_POWER = MAX_GAUGE_PER_ROUND * GAUGE_ROUNDS;
+/** 地面との角度の上限 [度] と、投げる向きの左右の上限 [度]（UI とサーバーの検証で共通） */
+export const THROW_LIMITS = { elevationMax: 45, yaw: 50 };
 
 const G = 9.81;
 const AIR_DENSITY = 1.2;

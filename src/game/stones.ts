@@ -1,4 +1,4 @@
-import { clamp, createRng, randomSeed, range, smoothstep, type Rng } from "./rng";
+import { clamp, createRng, deriveSeed, randomSeed, range, smoothstep, type Rng } from "./rng";
 import { MOVE_RANGE, nearEdgeZ } from "./stages";
 import type { StageDef, StoneQuality, StoneSpec } from "./types";
 
@@ -19,7 +19,10 @@ const STONE_COLORS: [number, number, number][] = [
 
 let idCounter = 0;
 
-export function generateStone(rng: Rng, x: number, z: number): StoneSpec {
+/** 追加ボタンで増えた石の通し番号はここから始める（最初の石と重ならないように） */
+export const ADD_SERIAL_BASE = 1_000_000;
+
+export function generateStone(rng: Rng, x: number, z: number, serial = 0): StoneSpec {
   // 4個に1個くらいは「水切り向き」の平たい石が混ざる
   const skipper = rng() < 0.25;
   const length = skipper ? range(rng, 5, 9.5) : 4.5 + Math.pow(rng(), 1.4) * 8;
@@ -43,6 +46,7 @@ export function generateStone(rng: Rng, x: number, z: number): StoneSpec {
   idCounter += 1;
   return {
     id: `stone-${Date.now().toString(36)}-${idCounter}`,
+    serial,
     seed: Math.floor(rng() * 1e9),
     length,
     width,
@@ -55,6 +59,11 @@ export function generateStone(rng: Rng, x: number, z: number): StoneSpec {
     z,
     rotY: rng() * Math.PI * 2,
   };
+}
+
+/** 河原の種と通し番号から石を作る。位置以外の性質は (fieldSeed, serial) だけで決まる */
+export function stoneFromSerial(fieldSeed: number, serial: number, x = 0, z = 0): StoneSpec {
+  return generateStone(createRng(deriveSeed(fieldSeed, serial)), x, z, serial);
 }
 
 /** 河原の空いている場所を探す */
@@ -73,8 +82,16 @@ function findFreeSpot(stage: StageDef, rng: Rng, existing: StoneSpec[], nearX?: 
   return null;
 }
 
-export function spawnStones(stage: StageDef, count: number, existing: StoneSpec[] = [], seed = randomSeed(), nearX?: number): StoneSpec[] {
-  const rng = createRng(seed);
+export function spawnStones(
+  stage: StageDef,
+  count: number,
+  existing: StoneSpec[] = [],
+  seed = randomSeed(),
+  nearX?: number,
+  serialBase = 0,
+): StoneSpec[] {
+  // 置き場所の乱数と、石そのものの乱数（通し番号ごと）は分けておく
+  const rng = createRng(deriveSeed(seed, -1 - serialBase));
   const result: StoneSpec[] = [];
   // 最初は地面が見えなくなるくらい格子状に敷き詰める（少しずらして自然に）
   if (existing.length === 0 && nearX === undefined) {
@@ -85,16 +102,16 @@ export function spawnStones(stage: StageDef, count: number, existing: StoneSpec[
       const j = Math.floor(rng() * (i + 1));
       [cells[i], cells[j]] = [cells[j], cells[i]];
     }
-    for (const [cx, cd] of cells.slice(0, count)) {
+    cells.slice(0, count).forEach(([cx, cd], i) => {
       const x = cx + range(rng, -0.3, 0.3) * g;
-      result.push(generateStone(rng, x, nearEdgeZ(stage, x) + cd + range(rng, -0.3, 0.3) * g));
-    }
+      result.push(stoneFromSerial(seed, serialBase + i, x, nearEdgeZ(stage, x) + cd + range(rng, -0.3, 0.3) * g));
+    });
     return result;
   }
   for (let i = 0; i < count; i++) {
     const spot = findFreeSpot(stage, rng, [...existing, ...result], nearX);
     if (!spot) break;
-    result.push(generateStone(rng, spot.x, spot.z));
+    result.push(stoneFromSerial(seed, serialBase + i, spot.x, spot.z));
   }
   return result;
 }

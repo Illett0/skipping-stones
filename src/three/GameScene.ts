@@ -289,7 +289,7 @@ export class GameScene {
         for (let ii = 0; ii < 3; ii++) {
           const unit = 200 / STONE_VISUAL_SCALE;
           this.stoneVariants.push(
-            buildStoneGeometry({ id: "", seed: 101 + fi * 7 + ii, length: unit, width: unit, thickness: unit, flatness: fi / 3, irregularity: ii / 2, mass: 0, color: [1, 1, 1], x: 0, z: 0, rotY: 0 }, 2),
+            buildStoneGeometry({ id: "", serial: 0, seed: 101 + fi * 7 + ii, length: unit, width: unit, thickness: unit, flatness: fi / 3, irregularity: ii / 2, mass: 0, color: [1, 1, 1], x: 0, z: 0, rotY: 0 }, 2),
           );
         }
       }

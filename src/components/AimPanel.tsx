@@ -1,6 +1,7 @@
 "use client";
 
 import { Triangle } from "lucide-react";
+import { THROW_LIMITS } from "@/game/physics";
 import { Slider, SheetHeader } from "./ui";
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
   onConfirm: () => void;
 }
 
-export const ELEVATION_MAX = 45;
+export const ELEVATION_MAX = THROW_LIMITS.elevationMax;
 
 function Dial({ deg }: { deg: number }) {
   const cx = 20;

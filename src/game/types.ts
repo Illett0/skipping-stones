@@ -61,6 +61,8 @@ export interface Conditions {
 
 export interface StoneSpec {
   id: string;
+  /** 河原の種と組み合わせると石の性質を再現できる番号（サーバーでの記録の検証に使う） */
+  serial: number;
   seed: number;
   /** 長径 [cm] */
   length: number;

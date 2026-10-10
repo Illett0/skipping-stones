@@ -32,8 +32,9 @@ npx tsc src/game/physics.ts src/game/conditions.ts --outDir <tmp> --module commo
   - `physics.ts` 投擲シミュレーション。投げた瞬間に軌道を全部計算し、`ThrowResult`（軌道サンプル・バウンド・終了理由）を返す
 - `src/three/` — three.js の描画。`GameScene.ts` がシーン全体とカメラを管理し、React からは `setStage` / `setStones` / `setMode` / `setThrow` / `startFlight` で操作する
 - `src/components/` — UI。`GameRoot.tsx` が画面の状態遷移（title → select → position → aim → power → flight → result）を持つ
-- `src/lib/` — スコア保存。`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` があれば Supabase、なければ localStorage
-- `supabase/migrations/` — `scores` テーブルと RLS（誰でも閲覧・追加のみ可）
+- `src/lib/` — スコア保存。`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` があれば Supabase、なければ localStorage。`playToken.ts`・`supabaseAdmin.ts` はサーバー専用
+- `app/api/session`・`app/api/scores` — ランキングの不正対策。サーバーがプレイの種（河原・天候）に署名して発行し、記録時は投げ方だけを受け取って `src/game/verify.ts` の `replayThrow` で跳ねた回数を計算し直してから書き込む
+- `supabase/migrations/` — `scores` テーブルと RLS（閲覧は誰でも可。書き込みはサーバーの service_role だけ）
 
 ## 仕様上の数値
 
@@ -53,4 +54,6 @@ npx tsc src/game/physics.ts src/game/conditions.ts --outDir <tmp> --module commo
 - 描画負荷対策として、木・草・小石は区画ごとの `InstancedMesh`（`ChunkedInstances`）にして視錐台カリングを効かせている。細かい物は `userData.skipReflection` で水面の反射から外している
 - 水面は `three/examples` の `Water` のシェーダーを文字列置換で改造している（流れによる模様の移動・近距離の歪み抑制）。three を更新したら置換対象の文字列が残っているか確認する
 - 開発時のみ `window.__game`（シーン）と `window.__throw(values)`（ゲージ値を指定して投げる）がデバッグ用に使える
+- **秘密情報**: `SUPABASE_SERVICE_ROLE_KEY` と `SCORE_SIGNING_SECRET` はサーバー専用。`NEXT_PUBLIC_` を付けない、クライアントのコードから import しない、リポジトリに書かない（`.env.local` か Vercel の環境変数に置く）
+- 石の性質・天候・投擲の揺らぎはプレイの種から決定的に作る（`stoneFromSerial`・`conditionsAt`・`throwSeed`）。ブラウザとサーバーで結果が一致しないと記録が食い違うので、乱数の使い方を変えるときは両方の一致を確認する
 - Windows 環境。`python` コマンドは Microsoft Store のスタブで止まるので使わない

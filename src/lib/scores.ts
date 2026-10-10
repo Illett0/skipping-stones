@@ -1,4 +1,6 @@
+import { randomSeed } from "@/game/rng";
 import type { ScoreRecord, StageId } from "@/game/types";
+import type { PlaySeeds, ThrowSubmission } from "@/game/verify";
 import { getSupabase } from "./supabase";
 
 const LOCAL_KEY = "skipping-stones:scores";
@@ -23,18 +25,42 @@ function writeLocal(records: ScoreRecord[]) {
 
 export const isOnline = () => getSupabase() !== null;
 
-export async function saveScore(record: ScoreRecord): Promise<void> {
-  const supabase = getSupabase();
-  if (supabase) {
-    const { error } = await supabase.from("scores").insert({
-      player_name: record.player_name,
-      stage_id: record.stage_id,
-      bounces: record.bounces,
-      distance: Math.round(record.distance * 10) / 10,
-      weather: record.weather,
+/** オンライン記録用の署名付きプレイ情報（端末保存のときは token が null） */
+export interface PlaySession extends PlaySeeds {
+  token: string | null;
+}
+
+/** ステージに入るときに、サーバーから河原・天候の種をもらう。使えないときは端末だけで遊ぶ */
+export async function startPlay(stageId: StageId): Promise<PlaySession> {
+  if (isOnline()) {
+    try {
+      const res = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stageId }),
+      });
+      if (res.ok) return (await res.json()) as PlaySession;
+    } catch {
+      // 通信できないときは端末保存に切り替える
+    }
+  }
+  return { token: null, fieldSeed: randomSeed(), condSeed: randomSeed() };
+}
+
+/**
+ * 記録を保存する。オンラインでは「どう投げたか」だけを送り、跳ねた回数はサーバーが計算し直す。
+ * データベースへブラウザから直接書き込むことはしない。
+ */
+export async function saveScore(record: ScoreRecord, token: string | null, submission: ThrowSubmission): Promise<void> {
+  if (isOnline() && token) {
+    const res = await fetch("/api/scores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, playerName: record.player_name, throw: submission }),
     });
-    if (!error) return;
-    console.warn("Supabase への保存に失敗したため端末に保存します", error.message);
+    if (res.ok) return;
+    const { error } = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(error ?? "記録に失敗しました");
   }
   writeLocal([...readLocal(), { ...record, id: crypto.randomUUID(), created_at: new Date().toISOString() }]);
 }

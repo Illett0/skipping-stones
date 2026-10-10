@@ -4,6 +4,7 @@ import { Check, Database, HardDrive, Map as MapIcon, RotateCcw, Save, Sparkles, 
 import { useEffect, useState } from "react";
 import { WEATHER_LABEL } from "@/game/conditions";
 import type { EndReason, ScoreRecord, StageDef, Weather } from "@/game/types";
+import type { ThrowSubmission } from "@/game/verify";
 import { fetchTopScores, isOnline, loadPlayerName, saveScore, storePlayerName } from "@/lib/scores";
 
 interface Props {
@@ -16,6 +17,9 @@ interface Props {
   sessionBest: number;
   onRetry: () => void;
   onChangeStage: () => void;
+  /** オンライン記録用（サーバーが投擲をやり直して検証する） */
+  token: string | null;
+  submission: ThrowSubmission;
 }
 
 const REASON: Record<EndReason, string> = {
@@ -25,12 +29,13 @@ const REASON: Record<EndReason, string> = {
   "far-bank": "対岸まで届きました！",
 };
 
-export default function ResultDialog({ stage, bounces, distance, endReason, weather, isNewBest, sessionBest, onRetry, onChangeStage }: Props) {
+export default function ResultDialog({ stage, bounces, distance, endReason, weather, isNewBest, sessionBest, onRetry, onChangeStage, token, submission }: Props) {
   const [name, setName] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [board, setBoard] = useState<ScoreRecord[] | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const online = isOnline();
 
   useEffect(() => {
@@ -46,8 +51,15 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
     const trimmed = name.trim().slice(0, 20);
     if (!trimmed || saving) return;
     setSaving(true);
+    setSaveError(null);
     storePlayerName(trimmed);
-    await saveScore({ player_name: trimmed, stage_id: stage.id, bounces, distance, weather });
+    try {
+      await saveScore({ player_name: trimmed, stage_id: stage.id, bounces, distance, weather }, token, submission);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "記録に失敗しました");
+      setSaving(false);
+      return;
+    }
     const top = await fetchTopScores(stage.id);
     setBoard(top);
     const mine = top.find((r) => r.player_name === trimmed && r.bounces === bounces && Math.abs(r.distance - distance) < 0.2);
@@ -107,7 +119,13 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
               {saving ? "保存中" : "記録する"}
             </button>
           </form>
-        ) : (
+        ) : null}
+        {!saved && saveError ? (
+          <p className="body-m" role="alert" style={{ color: "var(--md-error)", margin: "8px 0 0" }}>
+            {saveError}
+          </p>
+        ) : null}
+        {!saved ? null : (
           <div className="empty-hint body-m">
             <Check size={20} color="var(--md-primary)" />
             記録しました

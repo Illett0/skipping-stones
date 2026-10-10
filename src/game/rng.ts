@@ -16,6 +16,14 @@ export function randomSeed(): number {
   return Math.floor(Math.random() * 0xffffffff);
 }
 
+/** 元の種と番号から、別の種を決定的に作る（同じ入力なら必ず同じ値） */
+export function deriveSeed(base: number, n: number): number {
+  let h = Math.imul(base ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(n + 0x632be5ab, 0xc2b2ae35);
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 export const range = (rng: Rng, min: number, max: number) => min + (max - min) * rng();
 
 /** 標準正規分布（Box–Muller） */

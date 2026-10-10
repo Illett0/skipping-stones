@@ -18,11 +18,21 @@ http://localhost:3000 を開きます。
 
 ## Supabase の設定（任意）
 
-1. Supabase プロジェクトで `supabase/migrations/20261007000000_create_scores.sql` を実行（SQL Editor または `supabase db push`）
-2. `.env.local.example` を `.env.local` にコピーし、URL と anon key を設定
-3. 開発サーバーを再起動
+1. Supabase プロジェクトで `supabase/migrations/` の SQL を日付の古い順にすべて実行（SQL Editor または `supabase db push`）
+2. `.env.local.example` を `.env.local` にコピーし、4 つの値を設定（Vercel では Project → Settings → Environment Variables）
+   - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`：ブラウザに渡る値
+   - `SUPABASE_SERVICE_ROLE_KEY` / `SCORE_SIGNING_SECRET`：**サーバー専用**。`NEXT_PUBLIC_` を付けない。秘密の文字列は `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` などで作る
+3. 開発サーバーを再起動（Vercel では再デプロイ）
 
 設定しない場合、ランキングは「この端末」に保存されます（画面にも表示されます）。
+
+### ランキングの不正対策
+
+- ブラウザからデータベースへ直接は書き込めない（`scores` への insert ポリシーなし）
+- ステージに入るとき、サーバー（`/api/session`）が河原・天候の乱数の種を発行して署名する
+- 記録時（`/api/scores`）は「どの石を・どこから・どの角度と向き・どのゲージで投げたか」だけを送り、サーバーが同じ物理計算で投擲をやり直して跳ねた回数を求める。送られてきた回数は使わない
+- 入力値はゲーム内で可能な範囲かを検査し、同じ投擲・同じ石の二重登録はデータベースの一意制約で防ぐ
+- 限界：ゲージの止め方などの操作が本当に人の手によるものかまでは確認できない。そのため、計算で最適な投げ方を探して送れば、物理的に可能な最高記録（約 100 回）に近い記録は作れる
 
 ## 遊び方
 

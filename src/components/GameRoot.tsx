@@ -4,10 +4,11 @@ import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { driftConditions, rollConditions } from "@/game/conditions";
 import { simulateThrow, throwDirection } from "@/game/physics";
-import { randomSeed } from "@/game/rng";
 import { currentAt, getStage, MOVE_RANGE, riverCenterZ, STAGES } from "@/game/stages";
-import { canAddStones, spawnStones } from "@/game/stones";
+import { ADD_SERIAL_BASE, canAddStones, spawnStones } from "@/game/stones";
 import type { Conditions, StageId, StoneSpec, ThrowResult } from "@/game/types";
+import { conditionsAt, driftSeed, throwSeed, type ThrowSubmission } from "@/game/verify";
+import { startPlay, type PlaySession } from "@/lib/scores";
 import type { GameScene as GameSceneType } from "@/three/GameScene";
 import AimPanel, { ELEVATION_MAX } from "./AimPanel";
 import HelpDialog from "./HelpDialog";
@@ -57,6 +58,9 @@ export default function GameRoot() {
   const [toast, setToast] = useState<string | null>(null);
 
   const onFlightEndRef = useRef<() => void>(() => {});
+  // 今のプレイの種（オンラインならサーバーの署名付き）と、何投目・何回追加したか
+  const playRef = useRef<(PlaySession & { throwIndex: number; addCount: number }) | null>(null);
+  const lastThrowRef = useRef<ThrowSubmission | null>(null);
 
   // ---------- 3D シーンの生成 ----------
   useEffect(() => {
@@ -131,10 +135,11 @@ export default function GameRoot() {
   // ---------- 進行 ----------
   const enterStage = useCallback((id: StageId) => {
     setPhase("loading");
-    window.setTimeout(() => {
+    startPlay(id).then((play) => window.setTimeout(() => {
+      playRef.current = { ...play, throwIndex: 0, addCount: 0 };
       const scene = sceneRef.current;
       const st = getStage(id);
-      const c = rollConditions(st);
+      const c = conditionsAt(st, play.condSeed, 0);
       if (scene) {
         if (loadedStageRef.current !== id) {
           setStones([]);
@@ -148,7 +153,7 @@ export default function GameRoot() {
       appliedCondRef.current = c;
       setCond(c);
       setStageId(id);
-      setStones(spawnStones(st, st.initialStones));
+      setStones(spawnStones(st, st.initialStones, [], play.fieldSeed));
       setSelectedId(null);
       setHoveredId(null);
       setThrowX(0);
@@ -156,7 +161,7 @@ export default function GameRoot() {
       setElevation(DEFAULT_ELEVATION);
       setSessionBest(0);
       setPhase("select");
-    }, 60);
+    }, 60));
   }, []);
 
   const backToTitle = useCallback(() => {
@@ -166,9 +171,11 @@ export default function GameRoot() {
   }, []);
 
   const addStones = useCallback(() => {
-    if (!canAddStones(stage, stones.length)) return;
-    // 今いる場所の周りに追加する
-    const added = spawnStones(stage, stage.addBatch, stones, undefined, throwX);
+    const play = playRef.current;
+    if (!play || !canAddStones(stage, stones.length)) return;
+    // 今いる場所の周りに追加する（石の通し番号は追加ごとに別の範囲）
+    const added = spawnStones(stage, stage.addBatch, stones, play.fieldSeed, throwX, ADD_SERIAL_BASE + play.addCount * stage.addBatch);
+    play.addCount += 1;
     if (added.length === 0) {
       setToast("河原に石を置く場所がありません");
       return;
@@ -188,8 +195,17 @@ export default function GameRoot() {
 
   const onGaugeComplete = useCallback(
     (values: number[]) => {
-      if (!selected || !cond) return;
+      const play = playRef.current;
+      if (!selected || !cond || !play) return;
       const power = values.reduce((a, b) => a + b, 0);
+      lastThrowRef.current = {
+        stoneSerial: selected.serial,
+        throwIndex: play.throwIndex,
+        originX: throwX,
+        elevationDeg: elevation,
+        yawDeg: yaw,
+        gauge: values,
+      };
       const res = simulateThrow({
         stone: selected,
         conditions: cond,
@@ -198,7 +214,7 @@ export default function GameRoot() {
         elevationDeg: elevation,
         yawDeg: yaw,
         power,
-        seed: randomSeed(),
+        seed: throwSeed(play.condSeed, play.throwIndex),
       });
       setResult(res);
       setBounces(0);
@@ -237,7 +253,11 @@ export default function GameRoot() {
     setStones((list) => list.filter((s) => s.id !== selectedId));
     setSelectedId(null);
     setResult(null);
-    if (cond) setCond(driftConditions(stage, cond));
+    const play = playRef.current;
+    if (cond && play) {
+      setCond(driftConditions(stage, cond, driftSeed(play.condSeed, play.throwIndex)));
+      play.throwIndex += 1;
+    }
   }, [selectedId, cond, stage]);
 
   const retry = useCallback(() => {
@@ -385,7 +405,7 @@ export default function GameRoot() {
         </div>
       )}
 
-      {phase === "result" && result && cond && (
+      {phase === "result" && result && cond && lastThrowRef.current && (
         <ResultDialog
           stage={stage}
           bounces={result.bounces.length}
@@ -396,6 +416,8 @@ export default function GameRoot() {
           sessionBest={sessionBest}
           onRetry={retry}
           onChangeStage={changeStage}
+          token={playRef.current?.token ?? null}
+          submission={lastThrowRef.current}
         />
       )}
 

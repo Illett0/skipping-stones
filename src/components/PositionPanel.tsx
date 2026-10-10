@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Footprints } from "lucide-react";
+import { THROW_LIMITS } from "@/game/physics";
 import { MOVE_RANGE } from "@/game/stages";
 import { Slider, SheetHeader } from "./ui";
 import { currentLabel } from "./TopBar";
@@ -15,7 +16,7 @@ interface Props {
   onConfirm: () => void;
 }
 
-export const YAW_LIMIT = 50;
+export const YAW_LIMIT = THROW_LIMITS.yaw;
 
 export default function PositionPanel({ x, yaw, localCurrent, onMove, onYaw, onBack, onConfirm }: Props) {
   const yawText = Math.abs(yaw) < 1 ? "正面（対岸へ）" : yaw > 0 ? `下流側へ ${yaw}°` : `上流側へ ${-yaw}°`;
