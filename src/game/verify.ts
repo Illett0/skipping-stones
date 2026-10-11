@@ -8,6 +8,9 @@ import type { Conditions, StageDef, Weather } from "./types";
 /** ランキングに表示・記録できる順位（この順位以内に入った記録だけ保存する） */
 export const RANKING_SIZE = 5;
 
+/** ランキングの集計開始時刻。これより前の記録は表示も順位の比較もしない（記録自体は消さない） */
+export const RANKING_SINCE = "2026-10-11T03:25:00Z";
+
 /** 今の上位（跳ねた回数 → 飛距離の順に並んだもの）に入れるか。最下位と同じ記録では入れない */
 export function entersTopRanking(top: { bounces: number; distance: number }[], bounces: number, distance: number): boolean {
   if (top.length < RANKING_SIZE) return true;

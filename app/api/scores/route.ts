@@ -1,5 +1,5 @@
 import { getStage } from "@/game/stages";
-import { entersTopRanking, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
+import { entersTopRanking, RANKING_SINCE, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
 import { verifyPlayToken } from "@/lib/playToken";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     .from("scores")
     .select("bounces, distance")
     .eq("stage_id", stage.id)
+    .gte("created_at", RANKING_SINCE)
     .order("bounces", { ascending: false })
     .order("distance", { ascending: false })
     .limit(RANKING_SIZE);

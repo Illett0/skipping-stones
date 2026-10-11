@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CloudRain, Database, Disc, HardDrive, MoveHorizontal, Trophy, WavesHorizontal } from "lucide-react";
+import { ChevronRight, CloudRain, Database, Disc, Gift, HardDrive, MoveHorizontal, Trophy, WavesHorizontal } from "lucide-react";
 import { useCallback, useState } from "react";
 import { STAGES } from "@/game/stages";
 import type { StageDef, StageId } from "@/game/types";
@@ -69,6 +69,11 @@ export default function StageSelect({ best, onSelect }: Props) {
           石を選び、川面を何回跳ねさせられるか
         </p>
       </div>
+
+      <p className="notice body-m" role="note">
+        <Gift size={20} />
+        10/31 23:59分地点で各ステージ1位の方には1000円相当のご飯おごります
+      </p>
 
       <div className="stage-grid" role="list">
         {STAGES.map((s) => (

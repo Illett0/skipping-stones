@@ -751,6 +751,23 @@ kbd {
   z-index: 5;
 }
 
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(1080px, 100%);
+  margin: -16px 0 20px;
+  padding: 12px 16px;
+  border-radius: var(--shape-l);
+  background: color-mix(in srgb, var(--md-tertiary-container) 85%, transparent);
+  color: var(--md-on-tertiary-container);
+  box-shadow: var(--elev-1);
+}
+
+.notice svg {
+  flex: none;
+}
+
 .brand {
   display: flex;
   flex-direction: column;
