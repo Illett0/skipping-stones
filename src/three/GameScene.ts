@@ -20,6 +20,8 @@ export interface SceneCallbacks {
   onPickStone?: (id: string) => void;
   onBounce?: (count: number) => void;
   onFlightEnd?: () => void;
+  /** 石選び中にスマホで左右にスワイプした量 [m]（+ で下流へ） */
+  onSwipe?: (dxMeters: number) => void;
 }
 
 interface Atmosphere {
@@ -41,6 +43,8 @@ interface Atmosphere {
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
+/** これ以上指が動いたらタップではなくスワイプとみなす [px] */
+const SWIPE_THRESHOLD_PX = 10;
 
 export class GameScene {
   private renderer: THREE.WebGLRenderer;
@@ -106,6 +110,9 @@ export class GameScene {
   private pointer = new THREE.Vector2(9, 9);
   private raycaster = new THREE.Raycaster();
   private overviewAngle = 0;
+  // スマホのスワイプ（指・ペンだけ。マウスは対象外）
+  private swipe: { id: number; lastX: number; moved: number } | null = null;
+  private swipeMoved = 0;
 
   private flight: {
     result: ThrowResult;
@@ -234,6 +241,9 @@ export class GameScene {
     this.scene.add(this.splash.group, this.rain.lines);
 
     const el = this.renderer.domElement;
+    el.addEventListener("pointerdown", this.onPointerDown);
+    el.addEventListener("pointerup", this.onPointerUp);
+    el.addEventListener("pointercancel", this.onPointerUp);
     el.addEventListener("pointermove", this.onPointerMove);
     el.addEventListener("pointerleave", this.onPointerLeave);
     el.addEventListener("click", this.onClick);
@@ -424,6 +434,9 @@ export class GameScene {
     this.audio.dispose();
     this.resizeObserver.disconnect();
     const el = this.renderer.domElement;
+    el.removeEventListener("pointerdown", this.onPointerDown);
+    el.removeEventListener("pointerup", this.onPointerUp);
+    el.removeEventListener("pointercancel", this.onPointerUp);
     el.removeEventListener("pointermove", this.onPointerMove);
     el.removeEventListener("pointerleave", this.onPointerLeave);
     el.removeEventListener("click", this.onClick);
@@ -629,10 +642,28 @@ export class GameScene {
     }
   }
 
+  private onPointerDown = (e: PointerEvent) => {
+    if (e.pointerType === "mouse" || this.mode !== "select") return;
+    this.swipe = { id: e.pointerId, lastX: e.clientX, moved: 0 };
+    this.swipeMoved = 0;
+  };
+
+  private onPointerUp = () => {
+    this.swipeMoved = this.swipe?.moved ?? 0;
+    this.swipe = null;
+  };
+
   private onPointerMove = (e: PointerEvent) => {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     if (this.mode !== "select") return;
+    if (this.swipe && e.pointerId === this.swipe.id) {
+      const dx = e.clientX - this.swipe.lastX;
+      this.swipe.lastX = e.clientX;
+      this.swipe.moved += Math.abs(dx);
+      // 地面をつかんで動かす向き：指を左へ動かすと下流（右）へ進む。画面の幅でおよそ 8m
+      if (this.swipe.moved > SWIPE_THRESHOLD_PX) this.callbacks.onSwipe?.((-dx / rect.width) * 8);
+    }
     const id = this.pickStone();
     if (id !== this.hoveredId) {
       this.hoveredId = id;
@@ -648,6 +679,11 @@ export class GameScene {
 
   private onClick = (e: MouseEvent) => {
     if (this.mode !== "select") return;
+    // スワイプした指を離したときは石を拾わない
+    if (this.swipeMoved > SWIPE_THRESHOLD_PX) {
+      this.swipeMoved = 0;
+      return;
+    }
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     const id = this.pickStone();

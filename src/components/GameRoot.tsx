@@ -86,6 +86,7 @@ export default function GameRoot() {
         onPickStone: (id) => setSelectedId(id),
         onBounce: (n) => setBounces(n),
         onFlightEnd: () => onFlightEndRef.current(),
+        onSwipe: (dx) => setThrowX((x) => Math.max(-MOVE_RANGE, Math.min(MOVE_RANGE, x + dx))),
       });
       sceneRef.current = scene;
       // タイトル画面の背景
