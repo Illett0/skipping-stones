@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowUp, CircleQuestionMark, Cloud, CloudRain, Disc, Sun, WavesHorizontal, Wind } from "lucide-react";
+import { ArrowLeft, ArrowUp, CircleQuestionMark, Cloud, CloudRain, Disc, Sun, Volume2, VolumeX, WavesHorizontal, Wind } from "lucide-react";
 import { WEATHER_LABEL, describeWindRelative } from "@/game/conditions";
 import type { Conditions, StageDef } from "@/game/types";
 
@@ -13,6 +13,8 @@ interface Props {
   stoneCount: number;
   onBack: () => void;
   onHelp: () => void;
+  muted: boolean;
+  onToggleMute: () => void;
 }
 
 const WeatherIcon = ({ w }: { w: Conditions["weather"] }) =>
@@ -25,7 +27,7 @@ export function currentLabel(v: number) {
   return "激流";
 }
 
-export default function TopBar({ stage, conditions, throwAngle, localCurrent, stoneCount, onBack, onHelp }: Props) {
+export default function TopBar({ stage, conditions, throwAngle, localCurrent, stoneCount, onBack, onHelp, muted, onToggleMute }: Props) {
   const windRot = ((conditions.windDir - throwAngle) * 180) / Math.PI;
   const currentRot = ((0 - throwAngle) * 180) / Math.PI;
   const windText = describeWindRelative(conditions.windDir, throwAngle);
@@ -64,6 +66,9 @@ export default function TopBar({ stage, conditions, throwAngle, localCurrent, st
             {stoneCount}/{stage.maxStones}
           </span>
         </span>
+        <button className="icon-btn surface" onClick={onToggleMute} aria-label={muted ? "音を出す" : "音を消す"} aria-pressed={muted}>
+          {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </button>
         <button className="icon-btn surface" onClick={onHelp} aria-label="遊び方">
           <CircleQuestionMark size={20} />
         </button>

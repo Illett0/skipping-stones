@@ -22,6 +22,7 @@ import TopBar from "./TopBar";
 type Phase = "title" | "loading" | "select" | "position" | "aim" | "power" | "flight" | "result";
 
 const BEST_KEY = "skipping-stones:best";
+const MUTED_KEY = "skipping-stones:muted";
 const DEFAULT_ELEVATION = 10;
 
 function readBest(): Partial<Record<StageId, number>> {
@@ -55,6 +56,14 @@ export default function GameRoot() {
   const [sessionBest, setSessionBest] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [help, setHelp] = useState(false);
+  // 最初に保存済みの設定を読む（後から読むと、保存の処理に上書きされてしまう）
+  const [muted, setMuted] = useState(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem(MUTED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [toast, setToast] = useState<string | null>(null);
 
   const onFlightEndRef = useRef<() => void>(() => {});
@@ -103,6 +112,16 @@ export default function GameRoot() {
   useEffect(() => {
     sceneRef.current?.setStones(stones);
   }, [stones, booting]);
+
+  // 音を消す設定は端末に覚えておく
+  useEffect(() => {
+    sceneRef.current?.setMuted(muted);
+    try {
+      localStorage.setItem(MUTED_KEY, muted ? "1" : "0");
+    } catch {
+      // 保存できなくても続行
+    }
+  }, [muted, booting]);
 
   useEffect(() => {
     sceneRef.current?.setSelectedStone(selectedId);
@@ -360,6 +379,8 @@ export default function GameRoot() {
             stoneCount={stones.length}
             onBack={backToTitle}
             onHelp={() => setHelp(true)}
+            muted={muted}
+            onToggleMute={() => setMuted((m) => !m)}
           />
 
           {phase === "flight" && (

@@ -2,10 +2,11 @@ import * as THREE from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import { previewArc, releasePoint, throwDirection, throwerPosition } from "@/game/physics";
-import { distanceFromWater, nearEdgeZ, riverCenterZ } from "@/game/stages";
+import { currentAt, distanceFromWater, nearEdgeZ, riverCenterZ } from "@/game/stages";
 import { STONE_FIELD } from "@/game/stones";
 import { terrainHeight } from "@/game/terrain";
 import type { Conditions, StageDef, StoneSpec, ThrowResult } from "@/game/types";
+import { GameAudio } from "./audio";
 import { FlowParticles, RainSystem, SplashSystem } from "./effects";
 import { buildStoneGeometry, STONE_VISUAL_SCALE, stoneMaterial } from "./stoneMesh";
 import { buildTerrain } from "./terrainMesh";
@@ -84,6 +85,7 @@ export class GameScene {
   };
   private splash: SplashSystem;
   private rain = new RainSystem();
+  private audio = new GameAudio();
   private flow: FlowParticles | null = null;
   private sway: SwayUniforms = { time: { value: 0 }, wind: { value: 2 } };
 
@@ -413,8 +415,13 @@ export class GameScene {
     this.arcLine.visible = false;
   }
 
+  setMuted(muted: boolean) {
+    this.audio.setMuted(muted);
+  }
+
   dispose() {
     cancelAnimationFrame(this.raf);
+    this.audio.dispose();
     this.resizeObserver.disconnect();
     const el = this.renderer.domElement;
     el.removeEventListener("pointermove", this.onPointerMove);
@@ -764,13 +771,17 @@ export class GameScene {
       const bn = f.result.bounces[f.bounceIdx];
       const strength = THREE.MathUtils.clamp(bn.speed / 25, 0.15, 1);
       this.splash.splash(bn.x, bn.z, strength * 0.8, f.dir.x * strength, f.dir.z * strength);
+      this.audio.skip(strength);
       f.bounceIdx++;
       this.callbacks.onBounce?.(f.bounceIdx);
     }
 
     if (!f.ended && f.t >= f.result.endT) {
       f.ended = true;
-      if (f.result.endReason !== "far-bank") this.splash.splash(f.pos.x, f.pos.z, 1.0);
+      if (f.result.endReason !== "far-bank") {
+        this.splash.splash(f.pos.x, f.pos.z, 1.0);
+        this.audio.sink();
+      }
     }
     if (f.ended) {
       f.endTimer += dt;
@@ -828,6 +839,12 @@ export class GameScene {
 
     this.splash.update(dt);
     if (this.flow) this.flow.update(dt, this.camLook, time);
+    if (cond && this.stage) {
+      // 見ている場所の川の流速と、水辺までの近さで環境音を変える
+      const cur = currentAt(this.stage, cond, this.camLook.x, riverCenterZ(this.stage, this.camLook.x));
+      const d = distanceFromWater(this.stage, this.camera.position.x, this.camera.position.z);
+      this.audio.update(dt, cur, cond.windSpeed, Math.max(0.15, Math.min(1, 1 - Math.max(d, 0) / 40)));
+    }
     if (cond && this.stage) {
       const stage = this.stage;
       this.rain.update(dt, this.camera.position, Math.cos(cond.windDir) * cond.windSpeed, Math.sin(cond.windDir) * cond.windSpeed, (x, z) => {

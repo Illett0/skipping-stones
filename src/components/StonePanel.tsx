@@ -32,7 +32,7 @@ export default function StonePanel({ stage, stones, shown, selected, x, onWalk, 
   const q = shown ? stoneQuality(shown) : null;
   const remainingRoom = stage.maxStones - stones.length;
   return (
-    <section className="sheet surface" aria-label="石を選ぶ">
+    <section className="sheet surface sheet--stones" aria-label="石を選ぶ">
       <SheetHeader icon={<Hand size={22} />} title="石を選ぶ" step="1 / 4">
         平たく、薄く、丸みがあって、ほどよい重さの石がよく跳ねます
       </SheetHeader>
@@ -105,14 +105,14 @@ export default function StonePanel({ stage, stones, shown, selected, x, onWalk, 
             <Plus size={18} />
             石を追加（{stage.addBatch}個）
           </button>
-          <span id="add-hint">
+          <span id="add-hint" className="stock__hint">
             {canAdd ? `残り ${stones.length} 個` : remainingRoom > 0 ? `あと${remainingRoom}個で上限` : "上限に達しています"}
           </span>
         </div>
         {selected && (
-          <button className="btn btn--outlined" onClick={onZoomOut}>
+          <button className="btn btn--outlined" onClick={onZoomOut} aria-label="ズームアウト">
             <ZoomOut size={18} />
-            ズームアウト
+            <span className="btn__label">ズームアウト</span>
           </button>
         )}
         <button className="btn btn--filled" onClick={onConfirm} disabled={!selected}>
