@@ -1,6 +1,6 @@
 import { randomSeed } from "@/game/rng";
 import type { ScoreRecord, StageId } from "@/game/types";
-import { RANKING_SINCE, RANKING_SIZE, type PlaySeeds, type ThrowSubmission } from "@/game/verify";
+import { HIDDEN_SCORE_IDS, RANKING_SINCE, RANKING_SIZE, type PlaySeeds, type ThrowSubmission } from "@/game/verify";
 import { getSupabase } from "./supabase";
 
 const LOCAL_KEY = "skipping-stones:scores";
@@ -73,6 +73,7 @@ export async function fetchTopScores(stageId: StageId, limit = RANKING_SIZE): Pr
       .select("id, player_name, stage_id, bounces, distance, weather, created_at")
       .eq("stage_id", stageId)
       .gte("created_at", RANKING_SINCE)
+      .not("id", "in", `(${HIDDEN_SCORE_IDS.join(",")})`)
       .order("bounces", { ascending: false })
       .order("distance", { ascending: false })
       .limit(limit);
@@ -80,7 +81,7 @@ export async function fetchTopScores(stageId: StageId, limit = RANKING_SIZE): Pr
     console.warn("Supabase からの取得に失敗したため端末の記録を表示します", error?.message);
   }
   return readLocal()
-    .filter((r) => r.stage_id === stageId && Date.parse(r.created_at ?? "") >= Date.parse(RANKING_SINCE))
+    .filter((r) => r.stage_id === stageId && Date.parse(r.created_at ?? "") >= Date.parse(RANKING_SINCE) && !HIDDEN_SCORE_IDS.includes(r.id ?? ""))
     .sort((a, b) => b.bounces - a.bounces || b.distance - a.distance)
     .slice(0, limit);
 }

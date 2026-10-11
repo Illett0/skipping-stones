@@ -16,6 +16,28 @@ export const RANKING_UNTIL = "2026-10-31T14:59:00Z";
 
 export const isRankingClosed = (now = Date.now()) => now >= Date.parse(RANKING_UNTIL);
 
+/** ランキングから外した記録の id（データベースからは消さない。表示も順位の比較もしない） */
+export const HIDDEN_SCORE_IDS: string[] = [
+  "55c463d4-d324-401b-916b-c26fc3113ed6",
+  "f8e6d762-83f7-42a7-8e99-44fd5763d26a",
+  "7048f2be-3c87-4037-b058-0cd741defe90",
+  "22a1d2a3-fd18-496f-b606-bbe04746ac67",
+  "9f0007f8-8194-459d-9158-e800f9617f7b",
+  "69074cdb-1255-4ce0-a01b-1aaed858139e",
+  "c917b272-2727-4763-9238-4d28617fbbfa",
+  "092f77f4-266e-4e7c-a81f-da6fd05a2d29",
+  "e23355a8-7088-4bc0-a7ad-be72fc369f45",
+  "f6646351-73f8-4196-a991-cb5d5371bdb8",
+  "5235d737-d60b-478e-974d-7a915842392b",
+  "458ae16a-58b3-4e6a-9fa8-8d43ee2d237a",
+  "50d41ac7-bd2b-4e76-82fc-0e74c9ce3d95",
+  "e2a28cfe-9e97-4424-bcc2-a4d14208858b",
+  "501a1448-2bca-4754-879b-1d378bf3529e",
+  "787d19c8-7010-47fc-9b7c-0fcb73b89e6e",
+  "24ee457a-8e17-4252-8b89-ac53a5d149b2",
+  "29e186c1-2b76-4b8d-a5d7-c6ab565d2410",
+];
+
 /** 今の上位（跳ねた回数 → 飛距離の順に並んだもの）に入れるか。最下位と同じ記録では入れない */
 export function entersTopRanking(top: { bounces: number; distance: number }[], bounces: number, distance: number): boolean {
   if (top.length < RANKING_SIZE) return true;

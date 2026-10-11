@@ -46,13 +46,15 @@ export function simulateThrow(input: ThrowInput): ThrowResult {
   const { stone, conditions: cond, stage } = input;
   const rng = createRng(input.seed);
   const q = stoneQuality(stone);
-  const Q = q.total;
+  // 見た目ではわからない当たり外れ（内部のひび・重心の偏りなど）。0.90〜1.04 倍（上限は理想の石）
+  const Q = Math.min(1, q.total * (0.9 + 0.14 * createRng(stone.seed ^ 0x5bd1e995)()));
   const m = stone.mass / 1000;
 
+  // 人の投げには毎回ブレがある：角度・向き・力が狙いから少しずつずれる
   const start = releasePoint(stage, input.originX);
-  const dir = throwDirection(input.yawDeg);
-  const v0 = releaseSpeed(input.power, stone.mass);
-  const el = input.elevationDeg * DEG;
+  const dir = throwDirection(input.yawDeg + gaussian(rng) * 3);
+  const v0 = releaseSpeed(input.power * clamp(1 + gaussian(rng) * 0.05, 0.85, 1.1), stone.mass);
+  const el = clamp(input.elevationDeg + gaussian(rng) * 1.5, 0, THROW_LIMITS.elevationMax) * DEG;
 
   let px = start.x;
   let py = start.y;
