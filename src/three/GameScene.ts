@@ -79,6 +79,8 @@ export class GameScene {
   private arcLine: THREE.Line;
   private heldStone: THREE.Mesh | null = null;
   private flightStone: THREE.Mesh | null = null;
+  // 炎の石のときに石を包む炎
+  private fire: THREE.Group | null = null;
 
   private textures: {
     water: THREE.Texture;
@@ -382,6 +384,7 @@ export class GameScene {
       this.flightStone.geometry.dispose();
       this.flightStone = null;
       this.flight = null;
+      this.removeFire();
     }
     this.updateRings();
     this.updateThrower();
@@ -406,6 +409,7 @@ export class GameScene {
     }
     this.flightStone = new THREE.Mesh(buildStoneGeometry(selected.spec), this.stoneMat);
     this.flightStone.castShadow = true;
+    if (result.fire) this.addFire();
     this.scene.add(this.flightStone);
     const s0 = result.samples[0];
     const dir = throwDirection(this.yaw);
@@ -837,6 +841,51 @@ export class GameScene {
       this.flightStone.rotateY(f.spin);
       this.flightStone.visible = f.pos.y > -0.8;
     }
+    if (this.fire) {
+      // 炎は石の位置に付いていき、ゆらゆら揺れる。沈んだら消える
+      this.fire.position.copy(f.pos);
+      this.fire.visible = !f.ended;
+      this.fire.children.forEach((c, i) => {
+        const sp = c as THREE.Sprite;
+        const base = sp.userData as { size: number; y: number };
+        const flick = 0.75 + 0.35 * Math.sin(f.t * 19 + i * 1.7) * Math.sin(f.t * 7 + i);
+        sp.scale.setScalar(base.size * flick);
+        sp.position.y = base.y + 0.04 * Math.sin(f.t * 13 + i * 2.3);
+        sp.material.opacity = 0.55 + 0.35 * flick;
+      });
+    }
+  }
+
+  /** 炎の石の炎（光る円を重ねて、加算合成で明るく見せる） */
+  private addFire() {
+    this.removeFire();
+    const group = new THREE.Group();
+    const colors = [0xffe08a, 0xffb347, 0xff7a2a, 0xff4d1a];
+    for (let i = 0; i < 8; i++) {
+      const sp = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: this.textures.dot,
+          color: colors[i % colors.length],
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
+      );
+      const a = (i / 8) * Math.PI * 2;
+      sp.position.set(Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06);
+      sp.userData = { size: i === 0 ? 0.7 : 0.28 + (i % 3) * 0.08, y: 0.06 + (i % 4) * 0.05 };
+      group.add(sp);
+    }
+    group.renderOrder = 4;
+    this.fire = group;
+    this.scene.add(group);
+  }
+
+  private removeFire() {
+    if (!this.fire) return;
+    this.scene.remove(this.fire);
+    this.fire.children.forEach((c) => (c as THREE.Sprite).material.dispose());
+    this.fire = null;
   }
 
   private loop = () => {

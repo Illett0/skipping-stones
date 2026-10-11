@@ -571,6 +571,19 @@ kbd {
   color: #fff;
 }
 
+.flight-hud__fire {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--md-warning);
+}
+
+.badge-fire {
+  background: color-mix(in srgb, var(--md-warning) 25%, transparent);
+  color: var(--md-warning);
+}
+
 .flight-hud__count.bump {
   animation: bump 320ms var(--ease-emphasized);
 }

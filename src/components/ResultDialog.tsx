@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Database, HardDrive, Info, Map as MapIcon, RotateCcw, Save, Sparkles, Trophy, WavesHorizontal } from "lucide-react";
+import { Check, Database, Flame, HardDrive, Info, Map as MapIcon, RotateCcw, Save, Sparkles, Trophy, WavesHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WEATHER_LABEL } from "@/game/conditions";
 import type { EndReason, ScoreRecord, StageDef, Weather } from "@/game/types";
@@ -20,6 +20,8 @@ interface Props {
   /** オンライン記録用（サーバーが投擲をやり直して検証する） */
   token: string | null;
   submission: ThrowSubmission;
+  /** 炎の石だったか（回数が 2 倍になった） */
+  fire?: boolean;
 }
 
 const REASON: Record<EndReason, string> = {
@@ -29,7 +31,7 @@ const REASON: Record<EndReason, string> = {
   "far-bank": "対岸まで届きました！",
 };
 
-export default function ResultDialog({ stage, bounces, distance, endReason, weather, isNewBest, sessionBest, onRetry, onChangeStage, token, submission }: Props) {
+export default function ResultDialog({ stage, bounces, distance, endReason, weather, isNewBest, sessionBest, onRetry, onChangeStage, token, submission, fire }: Props) {
   const [name, setName] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -81,6 +83,11 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
             跳ねた回数
           </div>
           <div className="big-number">{bounces}</div>
+          {fire && (
+            <span className="badge-new label-l badge-fire">
+              <Flame size={16} /> 炎の水切り！回数2倍
+            </span>
+          )}
           {isNewBest && bounces > 0 && (
             <span className="badge-new label-l">
               <Trophy size={16} /> 自己ベスト更新

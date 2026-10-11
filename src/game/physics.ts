@@ -1,5 +1,5 @@
-import { clamp, createRng, gaussian, smoothstep } from "./rng";
-import { currentAt, distanceFromWater, nearEdgeZ, riverCenterZ } from "./stages";
+import { clamp, createRng, deriveSeed, gaussian, smoothstep } from "./rng";
+import { currentAt, distanceFromWater, nearEdgeZ, riverCenterZ, riverHalfWidthAt } from "./stages";
 import { stoneQuality } from "./stones";
 import { terrainHeight } from "./terrain";
 import type { BounceEvent, EndReason, StageDef, ThrowInput, ThrowResult, TrajectorySample } from "./types";
@@ -7,6 +7,11 @@ import type { BounceEvent, EndReason, StageDef, ThrowInput, ThrowResult, Traject
 export const MAX_GAUGE_PER_ROUND = 1000;
 export const GAUGE_ROUNDS = 3;
 export const MAX_POWER = MAX_GAUGE_PER_ROUND * GAUGE_ROUNDS;
+/** 炎の石が出る確率。出ると跳ねる回数が予定の 2 倍になる */
+export const FIRE_CHANCE = 0.01;
+/** 炎の勢いで水面を走るときの速さ [m/s]（小刻みに跳ねるので遠くまでは行かない） */
+const FIRE_HOP_SPEED = 6;
+
 /** 地面との角度の上限 [度] と、投げる向きの左右の上限 [度]（UI とサーバーの検証で共通） */
 export const THROW_LIMITS = { elevationMax: 45, yaw: 50 };
 
@@ -45,6 +50,9 @@ export function releaseSpeed(power: number, massG: number) {
 export function simulateThrow(input: ThrowInput): ThrowResult {
   const { stone, conditions: cond, stage } = input;
   const rng = createRng(input.seed);
+  // 炎の石かどうか（他の乱数の並びを変えないよう、別の乱数で決める）
+  const fire = createRng(deriveSeed(input.seed, 0x2f6b))() < FIRE_CHANCE;
+  let fireTarget = 0;
   const q = stoneQuality(stone);
   // 見た目ではわからない当たり外れ（内部のひび・重心の偏りなど）。0.90〜1.04 倍（上限は理想の石）
   const Q = Math.min(1, q.total * (0.9 + 0.14 * createRng(stone.seed ^ 0x5bd1e995)()));
@@ -95,7 +103,21 @@ export function simulateThrow(input: ThrowInput): ThrowResult {
     step++;
 
     const dWater = distanceFromWater(stage, px, pz);
-    if (dWater > 0) {
+    if (dWater > 0 && fire && bounces.length > 0 && fireTarget === 0 && pz < riverCenterZ(stage, px)) {
+      // 炎の石が対岸に届きそうなとき：水際で向きを変え、下流へ跳ね続ける（予定回数＝ここまでの回数）
+      fireTarget = bounces.length * 2;
+      pz = riverCenterZ(stage, px) - riverHalfWidthAt(stage, px) + 0.5;
+      py = 0;
+      vx = FIRE_HOP_SPEED + currentAt(stage, cond, px, pz);
+      vz = FIRE_HOP_SPEED * 0.3;
+      vy = FIRE_HOP_SPEED * Math.tan(2 * DEG);
+      bounces.push({ t, x: px, z: pz, speed: FIRE_HOP_SPEED, index: bounces.length + 1 });
+      samples.push({ t, x: px, y: 0, z: pz });
+      if (bounces.length >= fireTarget) {
+        endReason = "sank";
+        ended = true;
+      }
+    } else if (dWater > 0) {
       // 陸の上
       const ground = terrainHeight(stage, px, pz);
       if (py <= ground) {
@@ -113,7 +135,25 @@ export function simulateThrow(input: ThrowInput): ThrowResult {
       // 波や流れの乱れは実質的な入水角を深くする
       const impact = Math.max(0.5, Math.atan2(-vy, hs) / DEG + Math.abs(gaussian(rng)) * turbulence * 0.7);
 
-      if (impact > critAngle) {
+      const wouldSink = impact > critAngle || hs < minSpeed;
+      if (fire && bounces.length > 0 && (fireTarget > 0 || wouldSink)) {
+        // 炎の石：沈むはずのところで火の勢いが付き、下流へ小刻みに跳ね続けて予定回数の 2 倍で沈む
+        if (fireTarget === 0) fireTarget = bounces.length * 2;
+        // 下流へ向かいながら川の中央へ寄っていく（岸にぶつからないように）
+        const fx = 1;
+        const fz = clamp((riverCenterZ(stage, px) - pz) / riverHalfWidthAt(stage, px), -1, 1) * 0.3;
+        const fl = Math.hypot(fx, fz);
+        vx = (fx / fl) * FIRE_HOP_SPEED + cur;
+        vz = (fz / fl) * FIRE_HOP_SPEED;
+        vy = FIRE_HOP_SPEED * Math.tan(2 * DEG);
+        py = 0;
+        bounces.push({ t, x: px, z: pz, speed: FIRE_HOP_SPEED, index: bounces.length + 1 });
+        samples.push({ t, x: px, y: 0, z: pz });
+        if (bounces.length >= fireTarget) {
+          endReason = "sank";
+          ended = true;
+        }
+      } else if (impact > critAngle) {
         endReason = bounces.length === 0 ? "too-steep" : "sank";
         py = 0;
         ended = true;
@@ -161,7 +201,7 @@ export function simulateThrow(input: ThrowInput): ThrowResult {
     }
   }
 
-  return { samples, bounces, endT, endReason, distance, releaseSpeed: v0 };
+  return { samples, bounces, endT, endReason, distance, releaseSpeed: v0, fire };
 }
 
 /** 投げる前の予測軌道（最初の着水まで、風は無視） */

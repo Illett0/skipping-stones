@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Flame } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { driftConditions, rollConditions } from "@/game/conditions";
 import { simulateThrow, throwDirection } from "@/game/physics";
@@ -390,6 +390,11 @@ export default function GameRoot() {
                 {bounces}
               </span>
               <span className="label-l muted">回 跳ねた</span>
+              {result?.fire && (
+                <span className="flight-hud__fire label-l">
+                  <Flame size={16} /> 炎の水切り！回数2倍
+                </span>
+              )}
             </div>
           )}
 
@@ -438,6 +443,7 @@ export default function GameRoot() {
           sessionBest={sessionBest}
           onRetry={retry}
           onChangeStage={changeStage}
+          fire={result.fire}
           token={playRef.current?.token ?? null}
           submission={lastThrowRef.current}
         />

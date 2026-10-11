@@ -130,6 +130,8 @@ export interface ThrowResult {
   endReason: EndReason;
   distance: number;
   releaseSpeed: number;
+  /** 炎の石（まれに出る。跳ねる回数が予定の 2 倍になる） */
+  fire: boolean;
 }
 
 export interface ScoreRecord {
