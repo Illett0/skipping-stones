@@ -1,9 +1,11 @@
 "use client";
 
 import { ChevronRight, CloudRain, Database, Disc, HardDrive, MoveHorizontal, Trophy, WavesHorizontal } from "lucide-react";
+import { useCallback, useState } from "react";
 import { STAGES } from "@/game/stages";
 import type { StageDef, StageId } from "@/game/types";
 import { isOnline } from "@/lib/scores";
+import RankingDialog from "./RankingDialog";
 
 interface Props {
   best: Partial<Record<StageId, number>>;
@@ -52,6 +54,8 @@ const STEPS = ["河原で石を選ぶ", "投げる場所と向きを決める", 
 
 export default function StageSelect({ best, onSelect }: Props) {
   const online = isOnline();
+  const [rankingStage, setRankingStage] = useState<StageDef | null>(null);
+  const closeRanking = useCallback(() => setRankingStage(null), []);
   return (
     <div className="title-screen">
       <div className="brand">
@@ -68,7 +72,8 @@ export default function StageSelect({ best, onSelect }: Props) {
 
       <div className="stage-grid" role="list">
         {STAGES.map((s) => (
-          <button key={s.id} role="listitem" className="stage-card" onClick={() => onSelect(s.id)} aria-label={`${s.name}で遊ぶ`}>
+          <div key={s.id} role="listitem" className="stage-card-wrap">
+          <button className="stage-card" onClick={() => onSelect(s.id)} aria-label={`${s.name}で遊ぶ`}>
             <StageArt stage={s} />
             <div>
               <div className="title-l">{s.name}</div>
@@ -105,8 +110,15 @@ export default function StageSelect({ best, onSelect }: Props) {
               </span>
             </div>
           </button>
+          {/* カードのボタンの中にボタンは置けないので、カードの右上に重ねる */}
+          <button className="btn btn--tonal stage-card__ranking" onClick={() => setRankingStage(s)} aria-label={`${s.name}のランキングを見る`}>
+            <Trophy size={16} />
+            ランキング
+          </button>
+          </div>
         ))}
       </div>
+      {rankingStage && <RankingDialog stage={rankingStage} onClose={closeRanking} />}
 
       <section className="howto surface" aria-label="遊び方">
         {STEPS.map((t, i) => (
