@@ -9,7 +9,7 @@ import type { Conditions, StageDef, Weather } from "./types";
 export const RANKING_SIZE = 5;
 
 /** ランキングの集計開始時刻。これより前の記録は表示も順位の比較もしない（記録自体は消さない） */
-export const RANKING_SINCE = "2026-10-11T03:25:00Z";
+export const RANKING_SINCE = "2026-10-11T05:04:00Z";
 
 /** ランキングの締め切り（日本時間 2026/10/31 23:59）。この時刻からは記録を受け付けない */
 export const RANKING_UNTIL = "2026-10-31T14:59:00Z";
