@@ -1,5 +1,5 @@
 import { getStage } from "@/game/stages";
-import { replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
+import { entersTopRanking, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
 import { verifyPlayToken } from "@/lib/playToken";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -32,6 +32,22 @@ export async function POST(request: Request) {
   if (!supabase) return Response.json({ error: "オンラインランキングは無効です" }, { status: 503 });
 
   const { bounces, distance, weather } = replayThrow(stage, claims, sub);
+
+  // 上位に入らない記録は保存しない（画面で隠すだけでなく、サーバーでも確かめる）
+  const { data: top, error: topError } = await supabase
+    .from("scores")
+    .select("bounces, distance")
+    .eq("stage_id", stage.id)
+    .order("bounces", { ascending: false })
+    .order("distance", { ascending: false })
+    .limit(RANKING_SIZE);
+  if (topError) {
+    console.error("ranking fetch failed", topError.message);
+    return Response.json({ error: "記録に失敗しました" }, { status: 500 });
+  }
+  if (!entersTopRanking(top ?? [], bounces, distance))
+    return Response.json({ error: `${RANKING_SIZE}位以内に入らなかったため記録できません` }, { status: 409 });
+
   const { error } = await supabase.from("scores").insert({
     player_name: name,
     stage_id: stage.id,

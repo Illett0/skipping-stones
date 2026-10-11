@@ -5,6 +5,17 @@ import { MOVE_RANGE } from "./stages";
 import { ADD_SERIAL_BASE, stoneFromSerial } from "./stones";
 import type { Conditions, StageDef, Weather } from "./types";
 
+/** ランキングに表示・記録できる順位（この順位以内に入った記録だけ保存する） */
+export const RANKING_SIZE = 5;
+
+/** 今の上位（跳ねた回数 → 飛距離の順に並んだもの）に入れるか。最下位と同じ記録では入れない */
+export function entersTopRanking(top: { bounces: number; distance: number }[], bounces: number, distance: number): boolean {
+  if (top.length < RANKING_SIZE) return true;
+  const last = top[RANKING_SIZE - 1];
+  const round = (d: number) => Math.round(d * 10) / 10;
+  return bounces > last.bounces || (bounces === last.bounces && round(distance) > round(last.distance));
+}
+
 /**
  * 1 回のプレイ（ステージに入ってから出るまで）の乱数の種。
  * オンライン時はサーバーが発行・署名し、河原の石・天候・投擲の揺らぎをすべてここから決める。

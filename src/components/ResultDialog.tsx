@@ -1,10 +1,10 @@
 "use client";
 
-import { Check, Database, HardDrive, Map as MapIcon, RotateCcw, Save, Sparkles, Trophy, WavesHorizontal } from "lucide-react";
+import { Check, Database, HardDrive, Info, Map as MapIcon, RotateCcw, Save, Sparkles, Trophy, WavesHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WEATHER_LABEL } from "@/game/conditions";
 import type { EndReason, ScoreRecord, StageDef, Weather } from "@/game/types";
-import type { ThrowSubmission } from "@/game/verify";
+import { entersTopRanking, RANKING_SIZE, type ThrowSubmission } from "@/game/verify";
 import { fetchTopScores, isOnline, loadPlayerName, saveScore, storePlayerName } from "@/lib/scores";
 
 interface Props {
@@ -37,6 +37,8 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const online = isOnline();
+  // ランキングの上位に入るときだけ記録できる
+  const qualifies = board !== null && entersTopRanking(board, bounces, distance);
 
   useEffect(() => {
     setName(loadPlayerName());
@@ -102,7 +104,7 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
           </div>
         </div>
 
-        {!saved ? (
+        {!saved && qualifies ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -119,6 +121,12 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
               {saving ? "保存中" : "記録する"}
             </button>
           </form>
+        ) : null}
+        {!saved && board !== null && !qualifies ? (
+          <div className="empty-hint body-m muted">
+            <Info size={20} />
+            {RANKING_SIZE}位以内に入らなかったため、今回は記録できません
+          </div>
         ) : null}
         {!saved && saveError ? (
           <p className="body-m" role="alert" style={{ color: "var(--md-error)", margin: "8px 0 0" }}>

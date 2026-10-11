@@ -1,6 +1,6 @@
 import { randomSeed } from "@/game/rng";
 import type { ScoreRecord, StageId } from "@/game/types";
-import type { PlaySeeds, ThrowSubmission } from "@/game/verify";
+import { RANKING_SIZE, type PlaySeeds, type ThrowSubmission } from "@/game/verify";
 import { getSupabase } from "./supabase";
 
 const LOCAL_KEY = "skipping-stones:scores";
@@ -65,7 +65,7 @@ export async function saveScore(record: ScoreRecord, token: string | null, submi
   writeLocal([...readLocal(), { ...record, id: crypto.randomUUID(), created_at: new Date().toISOString() }]);
 }
 
-export async function fetchTopScores(stageId: StageId, limit = 10): Promise<ScoreRecord[]> {
+export async function fetchTopScores(stageId: StageId, limit = RANKING_SIZE): Promise<ScoreRecord[]> {
   const supabase = getSupabase();
   if (supabase) {
     const { data, error } = await supabase
