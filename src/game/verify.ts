@@ -11,6 +11,11 @@ export const RANKING_SIZE = 5;
 /** ランキングの集計開始時刻。これより前の記録は表示も順位の比較もしない（記録自体は消さない） */
 export const RANKING_SINCE = "2026-10-11T03:25:00Z";
 
+/** ランキングの締め切り（日本時間 2026/10/31 23:59）。この時刻からは記録を受け付けない */
+export const RANKING_UNTIL = "2026-10-31T14:59:00Z";
+
+export const isRankingClosed = (now = Date.now()) => now >= Date.parse(RANKING_UNTIL);
+
 /** 今の上位（跳ねた回数 → 飛距離の順に並んだもの）に入れるか。最下位と同じ記録では入れない */
 export function entersTopRanking(top: { bounces: number; distance: number }[], bounces: number, distance: number): boolean {
   if (top.length < RANKING_SIZE) return true;

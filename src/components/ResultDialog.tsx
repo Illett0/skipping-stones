@@ -4,7 +4,7 @@ import { Check, Database, HardDrive, Info, Map as MapIcon, RotateCcw, Save, Spar
 import { useEffect, useState } from "react";
 import { WEATHER_LABEL } from "@/game/conditions";
 import type { EndReason, ScoreRecord, StageDef, Weather } from "@/game/types";
-import { entersTopRanking, RANKING_SIZE, type ThrowSubmission } from "@/game/verify";
+import { entersTopRanking, isRankingClosed, RANKING_SIZE, type ThrowSubmission } from "@/game/verify";
 import { fetchTopScores, isOnline, loadPlayerName, saveScore, storePlayerName } from "@/lib/scores";
 
 interface Props {
@@ -38,7 +38,9 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
   const [saveError, setSaveError] = useState<string | null>(null);
   const online = isOnline();
   // ランキングの上位に入るときだけ記録できる
-  const qualifies = board !== null && entersTopRanking(board, bounces, distance);
+  // 締め切り後は記録できない
+  const closed = isRankingClosed();
+  const qualifies = !closed && board !== null && entersTopRanking(board, bounces, distance);
 
   useEffect(() => {
     setName(loadPlayerName());
@@ -122,10 +124,10 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
             </button>
           </form>
         ) : null}
-        {!saved && board !== null && !qualifies ? (
+        {!saved && (closed || (board !== null && !qualifies)) ? (
           <div className="empty-hint body-m muted">
             <Info size={20} />
-            {RANKING_SIZE}位以内に入らなかったため、今回は記録できません
+            {closed ? "ランキングの受付は終了しました（10/31 23:59 締め切り）" : `${RANKING_SIZE}位以内に入らなかったため、今回は記録できません`}
           </div>
         ) : null}
         {!saved && saveError ? (

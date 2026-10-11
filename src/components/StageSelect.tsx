@@ -4,6 +4,7 @@ import { ChevronRight, CloudRain, Database, Disc, Gift, HardDrive, MoveHorizonta
 import { useCallback, useState } from "react";
 import { STAGES } from "@/game/stages";
 import type { StageDef, StageId } from "@/game/types";
+import { isRankingClosed } from "@/game/verify";
 import { isOnline } from "@/lib/scores";
 import RankingDialog from "./RankingDialog";
 
@@ -73,6 +74,7 @@ export default function StageSelect({ best, onSelect }: Props) {
       <p className="notice body-m" role="note">
         <Gift size={20} />
         10/31 23:59分地点で各ステージ1位の方には1000円相当のご飯おごります
+        {isRankingClosed() && "（受付は終了しました）"}
       </p>
 
       <div className="stage-grid" role="list">

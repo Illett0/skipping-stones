@@ -1,5 +1,5 @@
 import { getStage } from "@/game/stages";
-import { entersTopRanking, RANKING_SINCE, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
+import { entersTopRanking, isRankingClosed, RANKING_SINCE, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
 import { verifyPlayToken } from "@/lib/playToken";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -19,6 +19,9 @@ export async function POST(request: Request) {
 
   const claims = verifyPlayToken(body.token);
   if (!claims) return Response.json({ error: "プレイの情報が無効か、期限が切れています" }, { status: 401 });
+
+  // 締め切り後は受け付けない（サーバーの時計で判定するので、ブラウザ側の時刻は関係ない）
+  if (isRankingClosed()) return Response.json({ error: "ランキングの受付は終了しました" }, { status: 403 });
 
   const name = typeof body.playerName === "string" ? body.playerName.replace(/[\u0000-\u001f\u007f]/g, "").trim() : "";
   if (name.length < 1 || name.length > 20) return Response.json({ error: "名前は1〜20文字で入力してください" }, { status: 400 });
