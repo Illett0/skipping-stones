@@ -96,7 +96,7 @@ export function validateSubmission(stage: StageDef, s: ThrowSubmission): string 
 }
 
 /** 種と投げ方から投擲をやり直して、跳ねた回数を求める（ブラウザとサーバーで同じ計算） */
-export function replayThrow(stage: StageDef, seeds: PlaySeeds, s: ThrowSubmission): { bounces: number; distance: number; weather: Weather } {
+export function replayThrow(stage: StageDef, seeds: PlaySeeds, s: ThrowSubmission, luck: number): { bounces: number; distance: number; weather: Weather } {
   const conditions = conditionsAt(stage, seeds.condSeed, s.throwIndex);
   const result = simulateThrow({
     stone: stoneFromSerial(seeds.fieldSeed, s.stoneSerial),
@@ -107,6 +107,7 @@ export function replayThrow(stage: StageDef, seeds: PlaySeeds, s: ThrowSubmissio
     yawDeg: s.yawDeg,
     power: s.gauge.reduce((a, b) => a + b, 0),
     seed: throwSeed(seeds.condSeed, s.throwIndex),
+    luck,
   });
   return { bounces: result.bounces.length, distance: result.distance, weather: conditions.weather };
 }

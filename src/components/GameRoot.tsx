@@ -8,7 +8,7 @@ import { currentAt, getStage, MOVE_RANGE, riverCenterZ, STAGES } from "@/game/st
 import { ADD_SERIAL_BASE, canAddStones, spawnStones } from "@/game/stones";
 import type { Conditions, StageId, StoneSpec, ThrowResult } from "@/game/types";
 import { conditionsAt, driftSeed, throwSeed, type ThrowSubmission } from "@/game/verify";
-import { startPlay, type PlaySession } from "@/lib/scores";
+import { fetchThrowLuck, startPlay, type PlaySession } from "@/lib/scores";
 import type { GameScene as GameSceneType } from "@/three/GameScene";
 import AimPanel, { ELEVATION_MAX } from "./AimPanel";
 import HelpDialog from "./HelpDialog";
@@ -70,6 +70,8 @@ export default function GameRoot() {
   // 今のプレイの種（オンラインならサーバーの署名付き）と、何投目・何回追加したか
   const playRef = useRef<(PlaySession & { throwIndex: number; addCount: number }) | null>(null);
   const lastThrowRef = useRef<ThrowSubmission | null>(null);
+  /** 今の投擲の当たり外れをサーバーが決めたか（決めていない投擲はオンラインに記録しない） */
+  const serverLuckRef = useRef(false);
 
   // ---------- 3D シーンの生成 ----------
   useEffect(() => {
@@ -214,11 +216,11 @@ export default function GameRoot() {
   }, [selected]);
 
   const onGaugeComplete = useCallback(
-    (values: number[]) => {
+    async (values: number[]) => {
       const play = playRef.current;
       if (!selected || !cond || !play) return;
       const power = values.reduce((a, b) => a + b, 0);
-      lastThrowRef.current = {
+      const submission: ThrowSubmission = {
         stoneSerial: selected.serial,
         throwIndex: play.throwIndex,
         originX: throwX,
@@ -226,6 +228,10 @@ export default function GameRoot() {
         yawDeg: yaw,
         gauge: values,
       };
+      lastThrowRef.current = submission;
+      // 石の見えない当たり外れは、オンラインでは投げた瞬間にサーバーが決める（ブラウザでは前もって計算できない）
+      const serverLuck = play.token ? await fetchThrowLuck(play.token, submission) : null;
+      serverLuckRef.current = serverLuck !== null;
       const res = simulateThrow({
         stone: selected,
         conditions: cond,
@@ -235,6 +241,7 @@ export default function GameRoot() {
         yawDeg: yaw,
         power,
         seed: throwSeed(play.condSeed, play.throwIndex),
+        luck: serverLuck ?? Math.random(),
       });
       setResult(res);
       setBounces(0);
@@ -444,7 +451,7 @@ export default function GameRoot() {
           onRetry={retry}
           onChangeStage={changeStage}
           fire={result.fire}
-          token={playRef.current?.token ?? null}
+          token={serverLuckRef.current ? (playRef.current?.token ?? null) : null}
           submission={lastThrowRef.current}
         />
       )}

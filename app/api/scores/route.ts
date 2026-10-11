@@ -1,6 +1,6 @@
 import { getStage } from "@/game/stages";
 import { entersTopRanking, HIDDEN_SCORE_IDS, isRankingClosed, RANKING_SINCE, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
-import { verifyPlayToken } from "@/lib/playToken";
+import { throwLuck, verifyPlayToken } from "@/lib/playToken";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return Response.json({ error: "オンラインランキングは無効です" }, { status: 503 });
 
-  const { bounces, distance, weather } = replayThrow(stage, claims, sub);
+  const { bounces, distance, weather } = replayThrow(stage, claims, sub, throwLuck(claims, sub));
 
   // 上位に入らない記録は保存しない（画面で隠すだけでなく、サーバーでも確かめる）
   const { data: top, error: topError } = await supabase

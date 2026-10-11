@@ -104,6 +104,8 @@ export interface ThrowInput {
   /** ゲージ合計（0〜3000） */
   power: number;
   seed: number;
+  /** 石の見えない当たり外れ（0〜1）。オンラインではサーバーだけが知る鍵から投げた瞬間に決まる */
+  luck: number;
 }
 
 export interface TrajectorySample {

@@ -1,7 +1,7 @@
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { STAGES } from "@/game/stages";
 import type { StageId } from "@/game/types";
-import type { PlaySeeds } from "@/game/verify";
+import type { PlaySeeds, ThrowSubmission } from "@/game/verify";
 
 /**
  * サーバー専用。プレイの種に署名し、記録の送信時に改ざんされていないか確かめる。
@@ -35,6 +35,15 @@ export function issuePlayToken(stage: StageId): { token: string; claims: PlayCla
   };
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   return { token: `${payload}.${sign(payload, key)}`, claims };
+}
+
+/**
+ * 石の見えない当たり外れ（0〜1）。鍵を知らないと計算できず、石・何投目・投げ方が 1 つでも違えば別の値になる。
+ * そのため河原の種がわかっても、どの石が当たりかを前もって計算することはできない。
+ */
+export function throwLuck(claims: PlayClaims, s: ThrowSubmission): number {
+  const data = JSON.stringify([claims.sid, s.stoneSerial, s.throwIndex, s.originX, s.elevationDeg, s.yawDeg, s.gauge]);
+  return createHmac("sha256", secret() ?? "").update(`luck:${data}`).digest().readUInt32BE(0) / 2 ** 32;
 }
 
 export function verifyPlayToken(token: unknown): PlayClaims | null {
