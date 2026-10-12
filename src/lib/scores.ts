@@ -48,10 +48,10 @@ export async function startPlay(stageId: StageId): Promise<PlaySession> {
 }
 
 /**
- * 投げた瞬間に、石の見えない当たり外れをサーバーに決めてもらう（同じ投擲につき 1 回だけ）。
+ * 投げた瞬間に、投擲の乱数の種（当たり外れ・炎・ブレ）をサーバーに決めてもらう（同じ投擲につき 1 回だけ）。
  * 使えないときは null（その投擲はオンラインに記録しない）
  */
-export async function fetchThrowLuck(token: string, submission: ThrowSubmission): Promise<number | null> {
+export async function fetchThrowSeed(token: string, submission: ThrowSubmission): Promise<number | null> {
   try {
     const res = await fetch("/api/stone-luck", {
       method: "POST",
@@ -59,8 +59,8 @@ export async function fetchThrowLuck(token: string, submission: ThrowSubmission)
       body: JSON.stringify({ token, throw: submission }),
     });
     if (res.ok) {
-      const { luck } = (await res.json()) as { luck?: unknown };
-      if (typeof luck === "number") return luck;
+      const { seed } = (await res.json()) as { seed?: unknown };
+      if (typeof seed === "number") return seed;
     }
   } catch {
     // 通信できないときは端末だけで投げる

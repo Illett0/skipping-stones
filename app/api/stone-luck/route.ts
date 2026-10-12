@@ -1,12 +1,12 @@
 import { getStage } from "@/game/stages";
 import { validateSubmission, type ThrowSubmission } from "@/game/verify";
-import { throwLuck, verifyPlayToken } from "@/lib/playToken";
+import { secretThrowSeed, verifyPlayToken } from "@/lib/playToken";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 投げた瞬間に呼ぶ。石の見えない当たり外れを返す。
+ * 投げた瞬間に呼ぶ。投擲の乱数の種（石の見えない当たり外れ・炎・ブレ）を返す。
  * 同じプレイの同じ投擲（何投目）には 1 回しか答えないので、いろいろな石で試してから選ぶことはできない。
  */
 export async function POST(request: Request) {
@@ -33,5 +33,5 @@ export async function POST(request: Request) {
     console.error("throw reveal insert failed", error.message);
     return Response.json({ error: "通信に失敗しました" }, { status: 500 });
   }
-  return Response.json({ luck: throwLuck(claims, sub) });
+  return Response.json({ seed: secretThrowSeed(claims, sub) });
 }

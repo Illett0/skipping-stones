@@ -33,7 +33,7 @@ npx tsc src/game/physics.ts src/game/conditions.ts --outDir <tmp> --module commo
 - `src/three/` — three.js の描画。`GameScene.ts` がシーン全体とカメラを管理し、React からは `setStage` / `setStones` / `setMode` / `setThrow` / `startFlight` で操作する
 - `src/components/` — UI。`GameRoot.tsx` が画面の状態遷移（title → select → position → aim → power → flight → result）を持つ
 - `src/lib/` — スコア保存。`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` があれば Supabase、なければ localStorage。`playToken.ts`・`supabaseAdmin.ts` はサーバー専用
-- `app/api/session`・`app/api/stone-luck`・`app/api/scores` — ランキングの不正対策。サーバーがプレイの種（河原・天候）に署名して発行し、記録時は投げ方だけを受け取って `src/game/verify.ts` の `replayThrow` で跳ねた回数を計算し直してから書き込む。石の見えない当たり外れは `stone-luck` が投げた瞬間に秘密の鍵から決めて返す（同じ投擲には 1 回だけ。`throw_reveals` に記録）
+- `app/api/session`・`app/api/stone-luck`・`app/api/scores` — ランキングの不正対策。サーバーがプレイの種（河原・天候）に署名して発行し、記録時は投げ方だけを受け取って `src/game/verify.ts` の `replayThrow` で跳ねた回数を計算し直してから書き込む。投擲の乱数の種は `stone-luck` が投げた瞬間に秘密の鍵から決めて返す（同じ投擲には 1 回だけ。`throw_reveals` に記録）。名前は同じプレイの中では最初に記録したものに固定（端末でも一度記録した名前は変えられない）
 - `supabase/migrations/` — `scores` テーブルと RLS（閲覧は誰でも可。書き込みはサーバーの service_role だけ）
 
 ## 仕様上の数値
@@ -43,9 +43,9 @@ npx tsc src/game/physics.ts src/game/conditions.ts --outDir <tmp> --module commo
 - 石は河原の上流〜下流（`MOVE_RANGE` 全体）に地面が見えないほど敷き詰める（格子 `STONE_FIELD.grid`、1 万個以上）。石選びでは ← → / A D / 画面のボタンを押している間だけ歩き（Shift で走る）、カメラは `throwX` の位置を映す
 - 河原の石は 1 個ずつのメッシュにせず、形の種類（12 種）× 8m 区画ごとの `InstancedMesh` で描く。拾った石だけ `buildStoneGeometry` で正確な形を作る
 - ゲージはクリック／キーを押したイベントの時刻で値を決め、表示もその場で固定する
-- 固定の最適解を作らないため、石には見た目でわからない当たり外れ（0.90〜1.04 倍）があり、投げるたびに角度・向き・力が少しブレる。揺らぎは種から決まり、当たり外れはサーバーの鍵（`throwLuck`）から決まるので、どちらもサーバーの再計算と一致する。当たり外れは河原の種から計算できないようにしておく（種から作ると最適な石を計算で探せてしまう）
+- 固定の最適解を作らないため、石には見た目でわからない当たり外れ（0.90〜1.04 倍）があり、投げるたびに角度・向き・力が少しブレる。投擲の乱数（当たり外れ・炎・ブレ・水面の乱れ）はすべて、投げた瞬間にサーバーの鍵から決まる種（`secretThrowSeed`）で作るので、サーバーの再計算と一致する。この種を河原・天候の種から計算できるようにしてはいけない（できると石ごとの回数を前もって計算できてしまう）
 - 物理の目安: 全条件 MAX（理想の石かつ当たり・ゲージ 3000・低角度・穏やかな水面、川幅の広い大河）で約 100 回、良い石で約 20 回、普通の石 5〜9 回、分厚い・重すぎる石 0 回。調整後はこの幅が保たれているか確認する（理想の石に近いほど減衰が 1 に近づくため、`retention` の係数は少し変えるだけで回数が大きく変わる）
-- 1%（`FIRE_CHANCE`）の確率で炎の石になり、跳ねる回数が予定のちょうど 2 倍になる（沈む・対岸に届くはずの時点から下流へ小刻みに跳ね続ける）。当たりは投擲の種から決めるので、サーバーの再計算と一致する
+- 1%（`FIRE_CHANCE`）の確率で炎の石になり、跳ねる回数が予定のちょうど 2 倍になる（沈む・対岸に届くはずの時点から下流へ小刻みに跳ね続ける）。当たりは投擲の乱数の種から決めるので、サーバーの再計算と一致する
 - 石の選択中はカメラをマウスに追従させない（画面が揺れて酔うため）
 
 ## 注意点
@@ -57,5 +57,5 @@ npx tsc src/game/physics.ts src/game/conditions.ts --outDir <tmp> --module commo
 - 水面は `three/examples` の `Water` のシェーダーを文字列置換で改造している（流れによる模様の移動・近距離の歪み抑制）。three を更新したら置換対象の文字列が残っているか確認する
 - 開発時のみ `window.__game`（シーン）と `window.__throw(values)`（ゲージ値を指定して投げる）がデバッグ用に使える
 - **秘密情報**: `SUPABASE_SERVICE_ROLE_KEY` と `SCORE_SIGNING_SECRET` はサーバー専用。`NEXT_PUBLIC_` を付けない、クライアントのコードから import しない、リポジトリに書かない（`.env.local` か Vercel の環境変数に置く）
-- 石の見た目の性質・天候・投擲の揺らぎはプレイの種から決定的に作る（`stoneFromSerial`・`conditionsAt`・`throwSeed`）。ブラウザとサーバーで結果が一致しないと記録が食い違うので、乱数の使い方を変えるときは両方の一致を確認する
+- 石の見た目の性質・天候はプレイの種から決定的に作る（`stoneFromSerial`・`conditionsAt`）。ブラウザとサーバーで結果が一致しないと記録が食い違うので、乱数の使い方を変えるときは両方の一致を確認する
 - Windows 環境。`python` コマンドは Microsoft Store のスタブで止まるので使わない

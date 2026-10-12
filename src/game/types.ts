@@ -103,9 +103,8 @@ export interface ThrowInput {
   yawDeg: number;
   /** ゲージ合計（0〜3000） */
   power: number;
+  /** 投擲の乱数の種（当たり外れ・炎・ブレ・水面の乱れ）。オンラインではサーバーだけが知る鍵から投げた瞬間に決まる */
   seed: number;
-  /** 石の見えない当たり外れ（0〜1）。オンラインではサーバーだけが知る鍵から投げた瞬間に決まる */
-  luck: number;
 }
 
 export interface TrajectorySample {

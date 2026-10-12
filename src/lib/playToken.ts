@@ -38,12 +38,13 @@ export function issuePlayToken(stage: StageId): { token: string; claims: PlayCla
 }
 
 /**
- * 石の見えない当たり外れ（0〜1）。鍵を知らないと計算できず、石・何投目・投げ方が 1 つでも違えば別の値になる。
- * そのため河原の種がわかっても、どの石が当たりかを前もって計算することはできない。
+ * 投擲の乱数の種（石の見えない当たり外れ・炎・投げのブレ・水面の乱れをすべてここから決める）。
+ * 鍵を知らないと計算できず、石・何投目・投げ方が 1 つでも違えば別の値になる。
+ * そのため河原や天候の種がわかっても、どの石・どの投擲で何回跳ねるかを前もって計算することはできない。
  */
-export function throwLuck(claims: PlayClaims, s: ThrowSubmission): number {
+export function secretThrowSeed(claims: PlayClaims, s: ThrowSubmission): number {
   const data = JSON.stringify([claims.sid, s.stoneSerial, s.throwIndex, s.originX, s.elevationDeg, s.yawDeg, s.gauge]);
-  return createHmac("sha256", secret() ?? "").update(`luck:${data}`).digest().readUInt32BE(0) / 2 ** 32;
+  return createHmac("sha256", secret() ?? "").update(`throw:${data}`).digest().readUInt32BE(0);
 }
 
 export function verifyPlayToken(token: unknown): PlayClaims | null {

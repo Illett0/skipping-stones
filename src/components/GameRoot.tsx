@@ -7,8 +7,9 @@ import { simulateThrow, throwDirection } from "@/game/physics";
 import { currentAt, getStage, MOVE_RANGE, riverCenterZ, STAGES } from "@/game/stages";
 import { ADD_SERIAL_BASE, canAddStones, spawnStones } from "@/game/stones";
 import type { Conditions, StageId, StoneSpec, ThrowResult } from "@/game/types";
-import { conditionsAt, driftSeed, throwSeed, type ThrowSubmission } from "@/game/verify";
-import { fetchThrowLuck, startPlay, type PlaySession } from "@/lib/scores";
+import { randomSeed } from "@/game/rng";
+import { conditionsAt, driftSeed, type ThrowSubmission } from "@/game/verify";
+import { fetchThrowSeed, startPlay, type PlaySession } from "@/lib/scores";
 import type { GameScene as GameSceneType } from "@/three/GameScene";
 import AimPanel, { ELEVATION_MAX } from "./AimPanel";
 import HelpDialog from "./HelpDialog";
@@ -70,7 +71,7 @@ export default function GameRoot() {
   // 今のプレイの種（オンラインならサーバーの署名付き）と、何投目・何回追加したか
   const playRef = useRef<(PlaySession & { throwIndex: number; addCount: number }) | null>(null);
   const lastThrowRef = useRef<ThrowSubmission | null>(null);
-  /** 今の投擲の当たり外れをサーバーが決めたか（決めていない投擲はオンラインに記録しない） */
+  /** 今の投擲の乱数をサーバーが決めたか（決めていない投擲はオンラインに記録しない） */
   const serverLuckRef = useRef(false);
 
   // ---------- 3D シーンの生成 ----------
@@ -229,9 +230,9 @@ export default function GameRoot() {
         gauge: values,
       };
       lastThrowRef.current = submission;
-      // 石の見えない当たり外れは、オンラインでは投げた瞬間にサーバーが決める（ブラウザでは前もって計算できない）
-      const serverLuck = play.token ? await fetchThrowLuck(play.token, submission) : null;
-      serverLuckRef.current = serverLuck !== null;
+      // 投擲の乱数（石の当たり外れ・炎・ブレ）は、オンラインでは投げた瞬間にサーバーが決める（ブラウザでは前もって計算できない）
+      const serverSeed = play.token ? await fetchThrowSeed(play.token, submission) : null;
+      serverLuckRef.current = serverSeed !== null;
       const res = simulateThrow({
         stone: selected,
         conditions: cond,
@@ -240,8 +241,7 @@ export default function GameRoot() {
         elevationDeg: elevation,
         yawDeg: yaw,
         power,
-        seed: throwSeed(play.condSeed, play.throwIndex),
-        luck: serverLuck ?? Math.random(),
+        seed: serverSeed ?? randomSeed(),
       });
       setResult(res);
       setBounces(0);

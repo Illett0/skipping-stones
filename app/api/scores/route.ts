@@ -1,6 +1,6 @@
 import { getStage } from "@/game/stages";
 import { entersTopRanking, HIDDEN_SCORE_IDS, isRankingClosed, RANKING_SINCE, RANKING_SIZE, replayThrow, validateSubmission, type ThrowSubmission } from "@/game/verify";
-import { throwLuck, verifyPlayToken } from "@/lib/playToken";
+import { secretThrowSeed, verifyPlayToken } from "@/lib/playToken";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return Response.json({ error: "オンラインランキングは無効です" }, { status: 503 });
 
-  const { bounces, distance, weather } = replayThrow(stage, claims, sub, throwLuck(claims, sub));
+  const { bounces, distance, weather } = replayThrow(stage, claims, sub, secretThrowSeed(claims, sub));
 
   // 上位に入らない記録は保存しない（画面で隠すだけでなく、サーバーでも確かめる）
   const { data: top, error: topError } = await supabase
@@ -52,6 +52,15 @@ export async function POST(request: Request) {
   }
   if (!entersTopRanking(top ?? [], bounces, distance))
     return Response.json({ error: `${RANKING_SIZE}位以内に入らなかったため記録できません` }, { status: 409 });
+
+  // 同じプレイの中では名前を変えられない（最初に記録した名前に固定）
+  const { data: prev, error: prevError } = await supabase.from("scores").select("player_name").eq("session_id", claims.sid).limit(1);
+  if (prevError) {
+    console.error("name check failed", prevError.message);
+    return Response.json({ error: "記録に失敗しました" }, { status: 500 });
+  }
+  if (prev?.[0] && prev[0].player_name !== name)
+    return Response.json({ error: `名前は変更できません（「${prev[0].player_name}」で記録してください）` }, { status: 409 });
 
   const { error } = await supabase.from("scores").insert({
     player_name: name,

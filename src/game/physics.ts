@@ -55,7 +55,7 @@ export function simulateThrow(input: ThrowInput): ThrowResult {
   let fireTarget = 0;
   const q = stoneQuality(stone);
   // 見た目ではわからない当たり外れ（内部のひび・重心の偏りなど）。0.90〜1.04 倍（上限は理想の石）
-  const Q = Math.min(1, q.total * (0.9 + 0.14 * input.luck));
+  const Q = Math.min(1, q.total * (0.9 + 0.14 * createRng(deriveSeed(input.seed, 0x5bd1))()));
   const m = stone.mass / 1000;
 
   // 人の投げには毎回ブレがある：角度・向き・力が狙いから少しずつずれる

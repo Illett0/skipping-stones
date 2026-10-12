@@ -33,6 +33,8 @@ const REASON: Record<EndReason, string> = {
 
 export default function ResultDialog({ stage, bounces, distance, endReason, weather, isNewBest, sessionBest, onRetry, onChangeStage, token, submission, fire }: Props) {
   const [name, setName] = useState("");
+  // 一度記録した名前は固定（変更できない）
+  const [fixedName, setFixedName] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [board, setBoard] = useState<ScoreRecord[] | null>(null);
@@ -46,6 +48,7 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
 
   useEffect(() => {
     setName(loadPlayerName());
+    setFixedName(loadPlayerName());
     let alive = true;
     fetchTopScores(stage.id).then((r) => alive && setBoard(r));
     return () => {
@@ -58,7 +61,6 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
     if (!trimmed || saving) return;
     setSaving(true);
     setSaveError(null);
-    storePlayerName(trimmed);
     try {
       await saveScore({ player_name: trimmed, stage_id: stage.id, bounces, distance, weather }, token, submission);
     } catch (e) {
@@ -66,6 +68,7 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
       setSaving(false);
       return;
     }
+    storePlayerName(trimmed);
     const top = await fetchTopScores(stage.id);
     setBoard(top);
     const mine = top.find((r) => r.player_name === trimmed && r.bounces === bounces && Math.abs(r.distance - distance) < 0.2);
@@ -123,7 +126,7 @@ export default function ResultDialog({ stage, bounces, distance, endReason, weat
           >
             <label className="text-field" style={{ flex: 1 }}>
               <span className="sr-only">名前</span>
-              <input value={name} maxLength={20} placeholder="名前を入力して記録" onChange={(e) => setName(e.target.value)} />
+              <input value={name} maxLength={20} placeholder="名前を入力して記録" readOnly={!!fixedName} onChange={(e) => setName(e.target.value)} />
             </label>
             <button className="btn btn--tonal" type="submit" disabled={!name.trim() || saving}>
               <Save size={18} />

@@ -75,7 +75,6 @@ export function conditionsAt(stage: StageDef, condSeed: number, throwIndex: numb
 }
 
 export const driftSeed = (condSeed: number, throwIndex: number) => deriveSeed(condSeed, throwIndex);
-export const throwSeed = (condSeed: number, throwIndex: number) => deriveSeed(condSeed, 500_000 + throwIndex);
 
 const isInt = (v: unknown, min: number, max: number): v is number => Number.isInteger(v) && (v as number) >= min && (v as number) <= max;
 const isNum = (v: unknown, min: number, max: number): v is number =>
@@ -95,8 +94,8 @@ export function validateSubmission(stage: StageDef, s: ThrowSubmission): string 
   return null;
 }
 
-/** 種と投げ方から投擲をやり直して、跳ねた回数を求める（ブラウザとサーバーで同じ計算） */
-export function replayThrow(stage: StageDef, seeds: PlaySeeds, s: ThrowSubmission, luck: number): { bounces: number; distance: number; weather: Weather } {
+/** 種と投げ方から投擲をやり直して、跳ねた回数を求める（ブラウザとサーバーで同じ計算）。seed は投擲の乱数の種（サーバーの鍵から決まる） */
+export function replayThrow(stage: StageDef, seeds: PlaySeeds, s: ThrowSubmission, seed: number): { bounces: number; distance: number; weather: Weather } {
   const conditions = conditionsAt(stage, seeds.condSeed, s.throwIndex);
   const result = simulateThrow({
     stone: stoneFromSerial(seeds.fieldSeed, s.stoneSerial),
@@ -106,8 +105,7 @@ export function replayThrow(stage: StageDef, seeds: PlaySeeds, s: ThrowSubmissio
     elevationDeg: s.elevationDeg,
     yawDeg: s.yawDeg,
     power: s.gauge.reduce((a, b) => a + b, 0),
-    seed: throwSeed(seeds.condSeed, s.throwIndex),
-    luck,
+    seed,
   });
   return { bounces: result.bounces.length, distance: result.distance, weather: conditions.weather };
 }
