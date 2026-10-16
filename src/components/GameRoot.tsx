@@ -198,11 +198,12 @@ export default function GameRoot() {
     if (!play || !canAddStones(stage, stones.length)) return;
     // 今いる場所の周りに追加する（石の通し番号は追加ごとに別の範囲）
     const added = spawnStones(stage, stage.addBatch, stones, play.fieldSeed, throwX, ADD_SERIAL_BASE + play.addCount * stage.addBatch);
-    play.addCount += 1;
     if (added.length === 0) {
       setToast("河原に石を置く場所がありません");
       return;
     }
+    // 石が増えたときだけ番号の範囲を進める（サーバーは番号の上限を「実際に増やせる数」から検査する）
+    play.addCount += 1;
     setStones([...stones, ...added]);
     setToast(`石を${added.length}個見つけました`);
   }, [stage, stones, throwX]);
