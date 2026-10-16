@@ -88,8 +88,9 @@ export const MAX_THROW_INDEX = 2000;
 
 /**
  * 追加で見つけた石の通し番号の上限（含む）。
+ * 追加した石の番号は ADD_SERIAL_BASE から、置いた順に隙間なく振る（GameRoot の addedCount）。
  * 追加は「追加後に上限を超えるなら不可」で、投げた石は河原から減るので、
- * throwIndex 回投げた時点までに追加できる石の数は maxStones - initialStones + throwIndex 個以内。
+ * throwIndex 回投げた時点までに追加で置ける石は maxStones - initialStones + throwIndex 個以内。
  */
 const maxAddedSerial = (stage: StageDef, throwIndex: number) =>
   ADD_SERIAL_BASE + stage.maxStones - stage.initialStones + throwIndex + stage.addBatch;
